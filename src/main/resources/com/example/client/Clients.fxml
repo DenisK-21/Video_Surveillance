@@ -5,14 +5,19 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 
+
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="642.0" prefWidth="830.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.client.ClientController">
+
     <bottom>
         <Button fx:id="start_btn" mnemonicParsing="false" onAction="#startCamera" prefHeight="30.0" prefWidth="100.0" text="Start Camera" BorderPane.alignment="BASELINE_CENTER">
             <BorderPane.margin>
                 <Insets />
             </BorderPane.margin></Button>
     </bottom>
-   <center>
-        <ImageView fx:id="currentFrame" fitHeight="510.0" fitWidth="665.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER" />
-   </center>
+
+
+    <center>
+        <ImageView fx:id="currentFrame_cam_1" fitHeight="669.0" fitWidth="931.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER" />
+    </center>
+>>>>>>> 145fd70 (Video Stream)
 </BorderPane>
