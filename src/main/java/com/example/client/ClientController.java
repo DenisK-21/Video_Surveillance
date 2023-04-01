@@ -47,9 +47,9 @@ public class ClientController {
 
             String RTSP_URL_1 = "rtsp://admin:@192.168.1.10:554/mode=real&idc=1&ids=2";
             String RTSP_URL_2 = "rtsp://192.168.1.12:554/stream1";
-            camera_1 = new Thread(new VideoStream(RTSP_URL_1, currentFrame_cam_1));
+            camera_1 = new Thread(new VideoStream(RTSP_URL_1, currentFrame_cam_1, "camera1_"));
             camera_1.start();
-            camera_2 = new Thread(new VideoStream(RTSP_URL_2, currentFrame_cam_2));
+            camera_2 = new Thread(new VideoStream(RTSP_URL_2, currentFrame_cam_2,"camera_2_"));
             camera_2.start();
 
 
