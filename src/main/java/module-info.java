@@ -7,6 +7,7 @@ module Video.Surveillance {
 
     requires org.bytedeco.javacv;
     requires org.bytedeco.opencv;
+    requires java.sql;
 
     opens com.example.client to javafx.fxml;
     exports com.example.client;

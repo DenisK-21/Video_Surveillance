@@ -3,14 +3,13 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.scene.shape.Line?>
 
-<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0"
-      prefWidth="1540.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.example.client.ClientController">
-   <ImageView fx:id="currentFrame_cam_1" fitHeight="400.0" fitWidth="750.0" layoutX="14.0" layoutY="35.0"
-              pickOnBounds="true" preserveRatio="true"/>
-   <ImageView fx:id="currentFrame_cam_2" fitHeight="400.0" fitWidth="750.0" layoutX="770.0" layoutY="35.0"
-              pickOnBounds="true" preserveRatio="true"/>
-   <Button fx:id="start_btn" layoutX="770.0" layoutY="600.0" mnemonicParsing="false" onAction="#startCamera"
-           prefHeight="67.0" prefWidth="128.0" text="Start Video"/>
+<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1540.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.client.ClientController">
+   <ImageView fx:id="currentFrame_cam_1" fitHeight="313.0" fitWidth="530.0" layoutX="23.0" layoutY="22.0" pickOnBounds="true" preserveRatio="true" />
+   <ImageView fx:id="currentFrame_cam_2" fitHeight="313.0" fitWidth="530.0" layoutX="581.0" layoutY="22.0" pickOnBounds="true" preserveRatio="true" />
+   <Button fx:id="start_btn" layoutX="1386.0" layoutY="35.0" mnemonicParsing="false" onAction="#startCamera" prefHeight="67.0" prefWidth="128.0" text="Start Video" />
+   <ImageView fx:id="currentFrame_cam_3" fitHeight="313.0" fitWidth="530.0" layoutX="23.0" layoutY="335.0" pickOnBounds="true" preserveRatio="true" />
+   <ImageView fx:id="currentFrame_cam_4" fitHeight="313.0" fitWidth="530.0" layoutX="581.0" layoutY="335.0" pickOnBounds="true" preserveRatio="true" />
+   <Line endX="1037.5999755859375" endY="756.0" layoutX="123.0" layoutY="44.0" scaleX="10.0" startX="1037.5999755859375" startY="-44.0" />
 </Pane>

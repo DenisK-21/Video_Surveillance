@@ -15,12 +15,17 @@ import javafx.scene.image.Image;
 
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Objects;
 
 public class Clients extends Application {
-
+    public static Connection connection;
+    public static final String DB_URL = "jdbc:postgresql://localhost:5433/postgres";
+    public static final String DB_Driver = "org.postgresql.Driver";
     @Override
-    public void start(Stage stage) throws IOException {
+    public void start(Stage stage) throws IOException, SQLException {
 
 
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("2_cameras.fxml"));
@@ -33,6 +38,7 @@ public class Clients extends Application {
         stage.setScene(scene);
 
         stage.show();
+        //connection = DriverManager.getConnection(DB_URL,"recordeo_adm","recordeo_password");
 
 
 
