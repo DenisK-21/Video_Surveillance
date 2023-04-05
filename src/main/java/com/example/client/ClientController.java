@@ -61,8 +61,8 @@ public class ClientController {
             String RTSP_URL_4 = "rtsp://192.168.1.120:554/mode=real";
             camera_1 = new Thread(new VideoStream(RTSP_URL_1, currentFrame_cam_1, "camera1_"));
             camera_1.start();
-            camera_2 = new Thread(new VideoStream(RTSP_URL_2, currentFrame_cam_2,"camera_2_"));
-            camera_2.start();
+            //camera_2 = new Thread(new VideoStream(RTSP_URL_2, currentFrame_cam_2,"camera_2_"));
+           // camera_2.start();
             Thread.sleep(1000);
             Image image = new Image("C://not_signal.png");
             currentFrame_cam_3.imageProperty().set(image);

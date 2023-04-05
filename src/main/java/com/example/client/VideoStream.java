@@ -10,21 +10,25 @@ import org.bytedeco.javacv.*;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.opencv.opencv_videoio.VideoWriter;
-import org.bytedeco.opencv.presets.opencv_core;
+
 import org.opencv.imgproc.Imgproc;
 
 
 import java.awt.image.BufferedImage;
 import java.time.LocalTime;
+
 import java.util.LinkedList;
 
 import static org.bytedeco.opencv.global.opencv_core.TYPE_MARKER;
 import static org.bytedeco.opencv.global.opencv_core.absdiff;
 import static org.bytedeco.opencv.global.opencv_imgproc.*;
-import static org.bytedeco.opencv.global.opencv_ximgproc.dilate;
-import static org.opencv.videoio.VideoWriter.fourcc;
+
+
 
 public class VideoStream implements Runnable {
+    private int range_1;
+    private final VideoWriter videoWriter;
+    private boolean check_video;
     private final String RTSP_IRL;
     private Mat previous_frame;
     ImageView imageView;
@@ -36,6 +40,9 @@ public class VideoStream implements Runnable {
         this.imageView = imageView;
         this.number_camera = number_camera;
         this.previous_frame = null;
+        this.check_video = false;
+        this.videoWriter = new VideoWriter();
+        this.range_1 = 0;
 
     }
 
@@ -43,19 +50,15 @@ public class VideoStream implements Runnable {
     public void run() {
         try {
             int fps = 0;
-            int prnt_fps = 0;
             int fps_sec = 0;
-            int now_sec = 0;//Создаем переменные
 
 
             // запись и предзапись видио
-            int range_10 = 0; //предзапись на 10 секунд
-            LinkedList<Frame> queue = new LinkedList<>(); //очередб на предзапись или постзапись
-            boolean check_video = false; // проверка на движение
-            boolean end_video = false; // проверка на окончание записи
-            int number = 0;
-            //VideoWriter writer = new VideoWriter(name,875967048, 20.0, new Size(704,576), true);
-            //VideoWriter writer=new VideoWriter("D:/a.mp4",fourcc('D', 'I', 'V', 'X'), 15.0,size, true);
+            LinkedList<Mat> queue = new LinkedList<>(); //очередб на предзапись или постзапись
+
+
+
+
 
             FFmpegFrameGrabber grabber = FFmpegFrameGrabber.createDefault(this.RTSP_IRL);
             System.out.println(grabber.hasVideo());
@@ -64,8 +67,9 @@ public class VideoStream implements Runnable {
             grabber.start();
 
 
-            FFmpegFrameRecorder recorder = FFmpegFrameRecorder.createDefault(this.number_camera + number + ".avi", 704, 576);
-            recorder.start();
+            Size size = new Size(grabber.getImageWidth(), grabber.getImageHeight());
+
+
             //1. Play video
             System.out.println(grabber.hasVideo());
 
@@ -77,7 +81,7 @@ public class VideoStream implements Runnable {
                 // prob
                 Frame frame = grabber.grabImage();
 
-                Mat image = converter.convertToMat(frame);
+                Mat image = new Mat(converter.convertToMat(frame));
                 // предназначен для того, что бы в будущем понимать было ли движение или нет
                 boolean check_movement = false;
 
@@ -92,58 +96,23 @@ public class VideoStream implements Runnable {
                             FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
 
 
-                //drawContours(image, contours, -1, Scalar.GREEN);
-                //prob end
+                //запись
 
-               /* if (contours.size() > 10) {
-                    check_video = true;
-                    range_10 = 0;
-                    end_video = true;
-
-                    putText(image, "Status: Movement", new Point(2000, 100),
-                            FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
-                } else {
-                    check_video = false;
-                    if (range_10 > 4)
-                        queue.removeFirst();
-                    queue.add(frame);
-                }
-                now_sec = LocalTime.now().getSecond();
+                WriteImage(check_movement,image,queue,size);
+                int now_sec = LocalTime.now().getSecond();
 
                 //расчёт fps
                 if (fps_sec == now_sec) {
                     fps++;
                 } else {
-                    range_10++;
+                    this.range_1++;
                     fps_sec = now_sec;
-                    prnt_fps = fps;
+                    System.out.println("FPS = " + fps);
                     fps = 0;
                 }
 
-                //работа с записью видио
-                if (check_video) {
-                    if (queue.size() != 0) {
-                        for (Frame x : queue) {
-                            recorder.record(x);
-                        }
-                        queue.clear();
-                    }
-                    recorder.record(frame);
+                // конец записи
 
-                } else {
-                    if (end_video) {
-                        if (range_10 > 4) {
-                            recorder.stop();
-                            end_video = false;
-                            number++;
-                            recorder = FFmpegFrameRecorder.createDefault(this.number_camera + number + ".avi", grabber.getImageWidth(), grabber.getImageHeight());
-                            recorder.start();
-                        } else recorder.record(frame);
-                    }
-                }
-
-                putText(image, "FPS: " + prnt_fps, new Point(2140, 1400),
-                        FONT_HERSHEY_DUPLEX, 1.8, Scalar.WHITE, 2, TYPE_MARKER, false);*/
 
                 frame = converter.convert(image);
                 WritableImage image1 = SwingFXUtils.toFXImage(FrameToBufferedImage(frame), null);
@@ -151,8 +120,45 @@ public class VideoStream implements Runnable {
                 //onFXThread(imageView.imageProperty(),image);
                 //System.out.println(this.RTSP_IRL);
             }
-        } catch (FrameGrabber.Exception | FFmpegFrameRecorder.Exception e) {
+        } catch (FrameGrabber.Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+
+    public  void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size){
+        if (this.check_video) { // если происходит запись
+            if (check_movement) {
+                queue.clear();
+                this.range_1 = 0;
+            } else {
+                queue.add(image);
+            }
+            if (this.range_1 > 5) {
+                this.check_video = false;
+                this.videoWriter.release();
+                System.out.println("заканчивем видио");
+            }
+            this.videoWriter.write(image);
+            System.out.println("записывфем кадр");//записываем видио
+        } else {
+            if (check_movement) {
+                System.out.println("запись началась");
+                this.videoWriter.open(this.number_camera + LocalTime.now().getSecond() + ".mp4",
+                        VideoWriter.fourcc((byte) 'D', (byte) 'I', (byte) 'V', (byte) 'X'), 24.0, size, true);
+                this.check_video = true;
+                for (Mat mat : queue) {
+                    this.videoWriter.write(mat);
+                }
+
+                this.range_1 = 0;
+                queue.clear();
+            } else {
+                if (this.range_1 > 5) {
+                    queue.removeFirst();
+                }
+                queue.addLast(new Mat(image));
+            }
         }
     }
 
