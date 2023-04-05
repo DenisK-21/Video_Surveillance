@@ -24,8 +24,8 @@ import static org.bytedeco.opencv.global.opencv_core.absdiff;
 import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 
-
 public class VideoStream implements Runnable {
+    private Mask mask;
     private int range_1;
     private final VideoWriter videoWriter;
     private boolean check_video;
@@ -43,6 +43,7 @@ public class VideoStream implements Runnable {
         this.check_video = false;
         this.videoWriter = new VideoWriter();
         this.range_1 = 0;
+        this.mask = new Mask();
 
     }
 
@@ -56,9 +57,10 @@ public class VideoStream implements Runnable {
             // запись и предзапись видио
             LinkedList<Mat> queue = new LinkedList<>(); //очередб на предзапись или постзапись
 
-
-
-
+            //на время маска будет здесь
+            this.mask.setUpper_left_corner(0, 0);
+            this.mask.setLower_right_corner(900, 700);
+            this.mask.setStatus(true);
 
             FFmpegFrameGrabber grabber = FFmpegFrameGrabber.createDefault(this.RTSP_IRL);
             System.out.println(grabber.hasVideo());
@@ -98,7 +100,7 @@ public class VideoStream implements Runnable {
 
                 //запись
 
-                WriteImage(check_movement,image,queue,size);
+                WriteImage(check_movement, image, queue, size);
                 int now_sec = LocalTime.now().getSecond();
 
                 //расчёт fps
@@ -113,6 +115,10 @@ public class VideoStream implements Runnable {
 
                 // конец записи
 
+                //маска
+                if (this.mask.isStatus())
+                    rectangle(image, this.mask.getUpper_left_corner(),
+                            this.mask.getLower_right_corner(), Scalar.BLUE, 3, 4, 0);
 
                 frame = converter.convert(image);
                 WritableImage image1 = SwingFXUtils.toFXImage(FrameToBufferedImage(frame), null);
@@ -126,7 +132,7 @@ public class VideoStream implements Runnable {
     }
 
 
-    public  void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size){
+    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size) {
         if (this.check_video) { // если происходит запись
             if (check_movement) {
                 queue.clear();
@@ -181,15 +187,19 @@ public class VideoStream implements Runnable {
         Mat dif_frame = new Mat();
         absdiff(this.previous_frame, prepared_frame, dif_frame);
         this.previous_frame = prepared_frame;
-        //Mat kernel = getStructuringElement(MORPH_RECT, new Size(5, 5));
-        // dilate(dif_frame,dif_frame, kernel);
+
 
         threshold(dif_frame, dif_frame, 10, 255, THRESH_BINARY);
+
+        //маска
+        if (this.mask.isStatus())
+            rectangle(dif_frame, this.mask.getUpper_left_corner(),
+                    this.mask.getLower_right_corner(), Scalar.BLUE, FILLED, 4, 0);
         MatVector contours = new MatVector();
         findContours(dif_frame, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
         //DrawingContours(image, contours);
-        return contours.size() > 20;
+        return contours.size() > 10;
     }
 
     private void DrawingContours(Mat image, MatVector contours) {
