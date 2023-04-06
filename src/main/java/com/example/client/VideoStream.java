@@ -6,18 +6,30 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import org.bytedeco.javacv.*;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.sql.SQLException;
+
 
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.opencv.opencv_videoio.VideoWriter;
 
+import org.bytedeco.opencv.presets.opencv_core;
 import org.opencv.imgproc.Imgproc;
 
 
 import java.awt.image.BufferedImage;
+import java.sql.Statement;
 import java.time.LocalTime;
 
 import java.util.LinkedList;
+
+import static com.example.client.Clients.connection;
 
 import static org.bytedeco.opencv.global.opencv_core.TYPE_MARKER;
 import static org.bytedeco.opencv.global.opencv_core.absdiff;
@@ -25,6 +37,7 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 
 public class VideoStream extends Thread {
+    private int id;
 
     private boolean mFinish;
 
@@ -33,12 +46,16 @@ public class VideoStream extends Thread {
     private final VideoWriter videoWriter;
     private boolean check_video;
     private final String RTSP_IRL;
+
+    private int localtime;
     private Mat previous_frame;
     ImageView imageView;
     private final String number_camera;
 
     public VideoStream(String URL, ImageView imageView, String number_camera) {
 
+
+        this.localtime = 0;
         this.RTSP_IRL = URL;
         this.imageView = imageView;
         this.number_camera = number_camera;
@@ -48,6 +65,7 @@ public class VideoStream extends Thread {
         this.range_1 = 0;
         this.mask = new Mask();
         this.mFinish = true;
+        this.id = 5;
 
     }
 
@@ -63,8 +81,8 @@ public class VideoStream extends Thread {
 
             //на время маска будет здесь
             //this.mask.setUpper_left_corner(0, 0);
-           // this.mask.setLower_right_corner(900, 700);
-           // this.mask.setStatus(true);
+            // this.mask.setLower_right_corner(900, 700);
+            // this.mask.setStatus(true);
 
             FFmpegFrameGrabber grabber = FFmpegFrameGrabber.createDefault(this.RTSP_IRL);
             System.out.println(grabber.hasVideo());
@@ -78,7 +96,7 @@ public class VideoStream extends Thread {
 
             //1. Play video
             System.out.println(grabber.hasVideo());
-
+            Statement statement = connection.createStatement();
             OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
             //что бы через раз обрабатывал MAt
             boolean change = true;
@@ -105,7 +123,7 @@ public class VideoStream extends Thread {
 
                 //запись
 
-                WriteImage(check_movement, image, queue, size);
+                WriteImage(check_movement, image, queue, size, statement);
                 int now_sec = LocalTime.now().getSecond();
 
                 //расчёт fps
@@ -131,13 +149,13 @@ public class VideoStream extends Thread {
                 //onFXThread(imageView.imageProperty(),image);
                 //System.out.println(this.RTSP_IRL);
             }
-        } catch (FrameGrabber.Exception e) {
+        } catch (FrameGrabber.Exception | SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
 
-    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size) {
+    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size, Statement statement) throws SQLException {
         if (this.check_video) { // если происходит запись
             if (check_movement) {
                 queue.clear();
@@ -148,6 +166,10 @@ public class VideoStream extends Thread {
             if (this.range_1 > 5) {
                 this.check_video = false;
                 this.videoWriter.release();
+                copyvideo(this.number_camera + this.localtime + ".mp4");
+                statement.executeUpdate("insert into videos(id, daterecord, videopath, duration, original)" +
+                        "values (" + "nextval('videos_id_seq')" + ",current_timestamp,'" + "database/videos/"
+                        + this.number_camera + this.localtime + ".mp4'" + ",current_time,true)");
                 System.out.println("заканчивем видио");
             }
             this.videoWriter.write(image);
@@ -155,7 +177,8 @@ public class VideoStream extends Thread {
         } else {
             if (check_movement) {
                 System.out.println("запись началась");
-                this.videoWriter.open(this.number_camera + LocalTime.now().getSecond() + ".mp4",
+                this.localtime = LocalTime.now().getSecond();
+                this.videoWriter.open(this.number_camera + localtime + ".mp4",
                         VideoWriter.fourcc((byte) 'D', (byte) 'I', (byte) 'V', (byte) 'X'), 24.0, size, true);
                 this.check_video = true;
                 for (Mat mat : queue) {
@@ -173,6 +196,19 @@ public class VideoStream extends Thread {
         }
     }
 
+    private void copyvideo(String name){
+        Path from = Paths.get(name);
+        Path to= Paths.get("C:/denis_zahar/Recordeo-server/database/videos/" + name);
+
+        try {
+            Files.copy( from,to, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("File copied successfully.");
+        }
+        catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+    }
     public static BufferedImage FrameToBufferedImage(Frame frame) {
 
         Java2DFrameConverter converter = new Java2DFrameConverter();
@@ -218,7 +254,7 @@ public class VideoStream extends Thread {
         }
     }
 
-    public void finish()		//Инициирует завершение потока
+    public void finish()        //Инициирует завершение потока
     {
         mFinish = false;
     }

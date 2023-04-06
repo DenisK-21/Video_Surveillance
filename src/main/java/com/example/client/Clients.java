@@ -37,7 +37,7 @@ public class Clients extends Application {
         stage.setScene(scene);
 
         stage.show();
-        //connection = DriverManager.getConnection(DB_URL,"recordeo_adm","recordeo_password");
+        connection = DriverManager.getConnection(DB_URL,"recordeo_adm","recordeo_password");
 
 
 
