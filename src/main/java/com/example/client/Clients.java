@@ -30,7 +30,6 @@ public class Clients extends Application {
 
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("2_cameras.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1540, 800);
-
         //scene.getStylesheets().add(getClass().getResource("").toExternalForm());
         Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/images/img.png")));
         stage.getIcons().add(image);

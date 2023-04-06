@@ -204,7 +204,7 @@ public class VideoStream extends Thread {
         findContours(dif_frame, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
         //DrawingContours(image, contours);
-        return contours.size() > 10;
+        return contours.size() > 20;
     }
 
     private void DrawingContours(Mat image, MatVector contours) {
@@ -223,7 +223,8 @@ public class VideoStream extends Thread {
         mFinish = false;
     }
 
-    public void setMask(Mask mask) {
+    public void setMask(Mask mask) throws InterruptedException {
         this.mask = mask;
+        Thread.sleep(1000);
     }
 }

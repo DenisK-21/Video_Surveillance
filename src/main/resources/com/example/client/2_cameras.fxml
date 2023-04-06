@@ -8,18 +8,18 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.shape.Line?>
 
-<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1540.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.client.ClientController">
+<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1540.0" style="-fx-background-color: black;" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.client.ClientController">
    <ImageView fx:id="currentFrame_cam_1" fitHeight="313.0" fitWidth="530.0" layoutX="23.0" layoutY="22.0" pickOnBounds="true" preserveRatio="true" />
    <ImageView fx:id="currentFrame_cam_2" fitHeight="313.0" fitWidth="530.0" layoutX="581.0" layoutY="22.0" pickOnBounds="true" preserveRatio="true" />
-   <Button fx:id="start_btn" layoutX="1386.0" layoutY="35.0" mnemonicParsing="false" onAction="#startCamera" prefHeight="67.0" prefWidth="128.0" text="Start Video" />
+   <Button fx:id="start_btn" layoutX="1190.0" layoutY="22.0" mnemonicParsing="false" onAction="#startCamera" prefHeight="67.0" prefWidth="128.0" text="Start Video" />
    <ImageView fx:id="currentFrame_cam_3" fitHeight="313.0" fitWidth="530.0" layoutX="23.0" layoutY="335.0" pickOnBounds="true" preserveRatio="true" />
    <ImageView fx:id="currentFrame_cam_4" fitHeight="313.0" fitWidth="530.0" layoutX="581.0" layoutY="335.0" pickOnBounds="true" preserveRatio="true" />
    <Line endX="1037.5999755859375" endY="756.0" layoutX="123.0" layoutY="44.0" scaleX="10.0" startX="1037.5999755859375" startY="-44.0" />
-   <CheckBox fx:id="check_box" layoutX="1386.0" layoutY="122.0" mnemonicParsing="false" onAction="#start_mask" prefHeight="33.0" prefWidth="91.0" text="Enable Mask" />
+   <CheckBox fx:id="check_box" layoutX="1394.0" layoutY="55.0" mnemonicParsing="false" onAction="#start_mask" prefHeight="33.0" prefWidth="91.0" text="Enable Mask" textFill="#f2eeee" />
    <TextField fx:id="int_cam_1_1" layoutX="1218.0" layoutY="680.0" prefHeight="13.0" prefWidth="58.0" promptText="x y" />
    <TextField fx:id="int_cam_1_2" layoutX="1218.0" layoutY="714.0" prefHeight="13.0" prefWidth="58.0" promptText="x y" />
    <TextField fx:id="int_cam_2_1" layoutX="1427.0" layoutY="680.0" prefHeight="13.0" prefWidth="58.0" promptText="x y" />
    <TextField fx:id="int_cam_2_2" layoutX="1427.0" layoutY="714.0" prefHeight="13.0" prefWidth="58.0" promptText="x y" />
-   <Label layoutX="1206.0" layoutY="642.0" prefHeight="25.0" prefWidth="82.0" text="Camera 1" />
-   <Label layoutX="1415.0" layoutY="642.0" prefHeight="25.0" prefWidth="82.0" text="Camera 2" />
+   <Label layoutX="1206.0" layoutY="642.0" prefHeight="25.0" prefWidth="82.0" text="Camera 1" textFill="#f1f7f4" />
+   <Label layoutX="1415.0" layoutY="642.0" prefHeight="25.0" prefWidth="82.0" text="Camera 2" textFill="#f7efef" />
 </Pane>
