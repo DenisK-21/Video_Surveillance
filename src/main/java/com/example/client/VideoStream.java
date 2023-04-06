@@ -24,7 +24,10 @@ import static org.bytedeco.opencv.global.opencv_core.absdiff;
 import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 
-public class VideoStream implements Runnable {
+public class VideoStream extends Thread {
+
+    private boolean mFinish;
+
     private Mask mask;
     private int range_1;
     private final VideoWriter videoWriter;
@@ -44,6 +47,7 @@ public class VideoStream implements Runnable {
         this.videoWriter = new VideoWriter();
         this.range_1 = 0;
         this.mask = new Mask();
+        this.mFinish = true;
 
     }
 
@@ -58,9 +62,9 @@ public class VideoStream implements Runnable {
             LinkedList<Mat> queue = new LinkedList<>(); //очередб на предзапись или постзапись
 
             //на время маска будет здесь
-            this.mask.setUpper_left_corner(0, 0);
-            this.mask.setLower_right_corner(900, 700);
-            this.mask.setStatus(true);
+            //this.mask.setUpper_left_corner(0, 0);
+           // this.mask.setLower_right_corner(900, 700);
+           // this.mask.setStatus(true);
 
             FFmpegFrameGrabber grabber = FFmpegFrameGrabber.createDefault(this.RTSP_IRL);
             System.out.println(grabber.hasVideo());
@@ -78,14 +82,15 @@ public class VideoStream implements Runnable {
             OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
             //что бы через раз обрабатывал MAt
             boolean change = true;
-            while (true) {
+            // предназначен для того, что бы в будущем понимать было ли движение или нет
+            boolean check_movement;
+            while (this.mFinish) {
 
                 // prob
                 Frame frame = grabber.grabImage();
 
                 Mat image = new Mat(converter.convertToMat(frame));
-                // предназначен для того, что бы в будущем понимать было ли движение или нет
-                boolean check_movement = false;
+                check_movement = false;
 
                 // условие нужно для того, чтобы кадры обрабатывались через один
                 if (change) {
@@ -213,4 +218,12 @@ public class VideoStream implements Runnable {
         }
     }
 
+    public void finish()		//Инициирует завершение потока
+    {
+        mFinish = false;
+    }
+
+    public void setMask(Mask mask) {
+        this.mask = mask;
+    }
 }
