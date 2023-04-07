@@ -99,7 +99,7 @@ public class VideoStream extends Thread {
             Statement statement = connection.createStatement();
             OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
             //что бы через раз обрабатывал MAt
-            boolean change = true;
+            int change = 0;
             // предназначен для того, что бы в будущем понимать было ли движение или нет
             boolean check_movement;
             while (this.mFinish) {
@@ -111,11 +111,13 @@ public class VideoStream extends Thread {
                 check_movement = false;
 
                 // условие нужно для того, чтобы кадры обрабатывались через один
-                if (change) {
+                if (change > 10) {
                     check_movement = MotionDetector(image);
-                    change = false;
+
                     System.out.println(LocalTime.now().getSecond());
-                } else change = true;
+                    change = 0;
+                }
+                change++;
                 if (check_movement)
                     putText(image, "Movement", new Point(1500, 100),
                             FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
