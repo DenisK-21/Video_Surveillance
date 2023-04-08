@@ -19,7 +19,6 @@ import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.opencv.opencv_videoio.VideoWriter;
 
 
-
 import org.opencv.imgproc.Imgproc;
 
 
@@ -93,7 +92,7 @@ public class VideoStream extends Thread {
 
             //1. Play video
             System.out.println(grabber.hasVideo());
-            Statement statement = connection.createStatement();
+            //Statement statement = connection.createStatement();
             OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
             //что бы через раз обрабатывал MAt
             int change = 0;
@@ -122,20 +121,23 @@ public class VideoStream extends Thread {
                             FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
 
 
-                status = Server.getStatus();
+                status = Server.getStatus(this.id_cam);
                 if (status == 0) {
                     this.event = false;
-                } else if (status / 10 == this.id_cam) {
+                } else if (status / 10 == this.id_cam || status / 10 == 3) {
                     this.event = true;
                     // присваивать какие-то события events
                     int ev = status % 10;
-                    events = switch (ev) {
-                        case 1 -> "fire alarm";
-                        case 2 -> "open door";
-                        case 3 -> "alarm";
-                        case 4 -> "open ticket office";
-                        case 5 -> "changing of the guard";
-                        default -> "unidentified team, cancel";
+
+                    switch (ev) {
+                        case 0 ->{this.event = false;
+                        events = "0";}
+                        case 1 -> events ="fire alarm";
+                        case 2 -> events ="open door";
+                        case 3 -> events ="alarm";
+                        case 4 -> events ="open ticket office";
+                        case 5 -> events ="changing of the guard";
+                        default -> events ="unidentified team, cancel";
                     };
                 }
 
@@ -143,7 +145,7 @@ public class VideoStream extends Thread {
 
                 //запись
 
-                WriteImage(check_movement, image, queue, size, statement, events);
+                WriteImage(check_movement, image, queue, size, events);
                 int now_sec = LocalTime.now().getSecond();
 
                 //расчёт fps
@@ -175,7 +177,7 @@ public class VideoStream extends Thread {
     }
 
 
-    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size, Statement statement, String events) throws SQLException {
+    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size, String events) throws SQLException {
         if (this.check_video) { // если происходит запись
             if (check_movement) {
                 queue.clear();
@@ -187,9 +189,9 @@ public class VideoStream extends Thread {
                 this.check_video = false;
                 this.videoWriter.release();
                 copyvideo(this.number_camera + this.localtime + ".mp4");
-               // statement.executeUpdate("insert into videos(id, daterecord, videopath, duration, original)" +
+                // statement.executeUpdate("insert into videos(id, daterecord, videopath, duration, original)" +
                 //        "values (" + "nextval('videos_id_seq')" + ",current_timestamp,'" + "database/videos/"
-                 //       + this.number_camera + this.localtime + ".mp4'" + ",current_time,true)");
+                //       + this.number_camera + this.localtime + ".mp4'" + ",current_time,true)");
                 System.out.println("заканчивем видио");
             }
             if (this.event) {
@@ -266,7 +268,7 @@ public class VideoStream extends Thread {
         findContours(dif_frame, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
         //DrawingContours(image, contours);
-        return contours.size() > 20;
+        return contours.size() > 40;
     }
 
     private void DrawingContours(Mat image, MatVector contours) {

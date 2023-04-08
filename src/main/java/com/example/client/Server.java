@@ -13,10 +13,13 @@ public class Server extends Thread {
     private static ServerSocket server; // серверсокет
     private static BufferedReader in; // поток чтения из сокета
     private static BufferedWriter out; // поток записи в сокет
-    private static int status;
+    private static int status_cam_1;
+
+    private static int status_cam_2;
 
     public Server(){
-        status = 0;
+        status_cam_1 = 0;
+        status_cam_2 = 0;
     }
     @Override
     public void run() {
@@ -25,6 +28,7 @@ public class Server extends Thread {
             try  {
                 server = new ServerSocket(8082); // серверсокет прослушивает порт 4004
                 System.out.println("Сервер запущен!"); // хорошо бы серверу
+                int status;
                 while (true) {
                     //   объявить о своем запуске
                     clientSocket = server.accept(); // accept() будет ждать пока
@@ -37,6 +41,7 @@ public class Server extends Thread {
                         out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
                         status = Integer.parseInt(in.readLine()); // ждём пока клиент что-нибудь нам напишет
+                        treatment(status);
                         System.out.println(status);
                         // не долго думая отвечает клиенту
                         out.write("Привет, это Сервер! Подтверждаю, вы написали : " + status + "\n");
@@ -57,8 +62,30 @@ public class Server extends Thread {
             System.err.println(e);
         }
     }
+    public void treatment(int status){
+        if(status / 10 == 1){
+            status_cam_1 = status;
+            return;
+        }
+        if (status / 10 == 2){
+            status_cam_2 = status;
+            return;
+        }
+        if (status / 10 == 3){
+            status_cam_1 = status;
+            status_cam_2 = status;
+        }
+    }
 
-    public static int getStatus() {
-        return status;
+    public static int getStatus(int id) {
+        switch (id) {
+            case 1 -> {
+                return status_cam_1;
+            }
+            case 2 -> {
+                return status_cam_2;
+            }
+        }
+        return 0;
     }
 }
