@@ -27,7 +27,6 @@ public class Clients extends Application {
     @Override
     public void start(Stage stage) throws IOException, SQLException {
 
-
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("2_cameras.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1540, 800);
         //scene.getStylesheets().add(getClass().getResource("").toExternalForm());
@@ -37,7 +36,9 @@ public class Clients extends Application {
         stage.setScene(scene);
 
         stage.show();
-        connection = DriverManager.getConnection(DB_URL,"recordeo_adm","recordeo_password");
+        //connection = DriverManager.getConnection(DB_URL,"recordeo_adm","recordeo_password");
+        Server server = new Server();
+        server.start();
 
 
 

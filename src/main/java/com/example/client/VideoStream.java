@@ -6,7 +6,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import org.bytedeco.javacv.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +18,8 @@ import org.bytedeco.javacv.Frame;
 import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.opencv.opencv_videoio.VideoWriter;
 
-import org.bytedeco.opencv.presets.opencv_core;
+
+
 import org.opencv.imgproc.Imgproc;
 
 
@@ -37,8 +37,9 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 
 public class VideoStream extends Thread {
-    private int id;
 
+    private final int id_cam;
+    private boolean event;
     private boolean mFinish;
 
     private Mask mask;
@@ -52,9 +53,9 @@ public class VideoStream extends Thread {
     ImageView imageView;
     private final String number_camera;
 
-    public VideoStream(String URL, ImageView imageView, String number_camera) {
+    public VideoStream(String URL, ImageView imageView, String number_camera, int id) {
 
-
+        this.id_cam = id;
         this.localtime = 0;
         this.RTSP_IRL = URL;
         this.imageView = imageView;
@@ -65,7 +66,7 @@ public class VideoStream extends Thread {
         this.range_1 = 0;
         this.mask = new Mask();
         this.mFinish = true;
-        this.id = 5;
+        this.event = false;
 
     }
 
@@ -79,10 +80,6 @@ public class VideoStream extends Thread {
             // запись и предзапись видио
             LinkedList<Mat> queue = new LinkedList<>(); //очередб на предзапись или постзапись
 
-            //на время маска будет здесь
-            //this.mask.setUpper_left_corner(0, 0);
-            // this.mask.setLower_right_corner(900, 700);
-            // this.mask.setStatus(true);
 
             FFmpegFrameGrabber grabber = FFmpegFrameGrabber.createDefault(this.RTSP_IRL);
             System.out.println(grabber.hasVideo());
@@ -100,6 +97,8 @@ public class VideoStream extends Thread {
             OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
             //что бы через раз обрабатывал MAt
             int change = 0;
+            String events = "0";
+            int status;
             // предназначен для того, что бы в будущем понимать было ли движение или нет
             boolean check_movement;
             while (this.mFinish) {
@@ -110,7 +109,7 @@ public class VideoStream extends Thread {
                 Mat image = new Mat(converter.convertToMat(frame));
                 check_movement = false;
 
-                // условие нужно для того, чтобы кадры обрабатывались через один
+                // условие нужно для того, чтобы кадры обрабатывались через 10
                 if (change > 10) {
                     check_movement = MotionDetector(image);
 
@@ -123,9 +122,28 @@ public class VideoStream extends Thread {
                             FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
 
 
+                status = Server.getStatus();
+                if (status == 0) {
+                    this.event = false;
+                } else if (status / 10 == this.id_cam) {
+                    this.event = true;
+                    // присваивать какие-то события events
+                    int ev = status % 10;
+                    events = switch (ev) {
+                        case 1 -> "fire alarm";
+                        case 2 -> "open door";
+                        case 3 -> "alarm";
+                        case 4 -> "open ticket office";
+                        case 5 -> "changing of the guard";
+                        default -> "unidentified team, cancel";
+                    };
+                }
+
+                check_movement = check_movement || this.event;
+
                 //запись
 
-                WriteImage(check_movement, image, queue, size, statement);
+                WriteImage(check_movement, image, queue, size, statement, events);
                 int now_sec = LocalTime.now().getSecond();
 
                 //расчёт fps
@@ -145,10 +163,10 @@ public class VideoStream extends Thread {
                     rectangle(image, this.mask.getUpper_left_corner(),
                             this.mask.getLower_right_corner(), Scalar.BLUE, 3, 4, 0);
 
+
                 frame = converter.convert(image);
                 WritableImage image1 = SwingFXUtils.toFXImage(FrameToBufferedImage(frame), null);
                 Platform.runLater(() -> imageView.imageProperty().set(image1));
-                //onFXThread(imageView.imageProperty(),image);
                 //System.out.println(this.RTSP_IRL);
             }
         } catch (FrameGrabber.Exception | SQLException e) {
@@ -157,7 +175,7 @@ public class VideoStream extends Thread {
     }
 
 
-    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size, Statement statement) throws SQLException {
+    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size, Statement statement, String events) throws SQLException {
         if (this.check_video) { // если происходит запись
             if (check_movement) {
                 queue.clear();
@@ -169,10 +187,16 @@ public class VideoStream extends Thread {
                 this.check_video = false;
                 this.videoWriter.release();
                 copyvideo(this.number_camera + this.localtime + ".mp4");
-                statement.executeUpdate("insert into videos(id, daterecord, videopath, duration, original)" +
-                        "values (" + "nextval('videos_id_seq')" + ",current_timestamp,'" + "database/videos/"
-                        + this.number_camera + this.localtime + ".mp4'" + ",current_time,true)");
+               // statement.executeUpdate("insert into videos(id, daterecord, videopath, duration, original)" +
+                //        "values (" + "nextval('videos_id_seq')" + ",current_timestamp,'" + "database/videos/"
+                 //       + this.number_camera + this.localtime + ".mp4'" + ",current_time,true)");
                 System.out.println("заканчивем видио");
+            }
+            if (this.event) {
+                // событие на экран
+                putText(image, events, new Point(800, 700),
+                        FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
+
             }
             this.videoWriter.write(image);
             System.out.println("записывфем кадр");//записываем видио
@@ -198,19 +222,19 @@ public class VideoStream extends Thread {
         }
     }
 
-    private void copyvideo(String name){
+    private void copyvideo(String name) {
         Path from = Paths.get(name);
-        Path to= Paths.get("C:/denis_zahar/Recordeo-server/database/videos/" + name);
+        Path to = Paths.get("C:/denis_zahar/Recordeo-server/database/videos/" + name);
 
         try {
-            Files.copy( from,to, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING);
             System.out.println("File copied successfully.");
-        }
-        catch (IOException ex) {
+        } catch (IOException ex) {
             ex.printStackTrace();
         }
 
     }
+
     public static BufferedImage FrameToBufferedImage(Frame frame) {
 
         Java2DFrameConverter converter = new Java2DFrameConverter();

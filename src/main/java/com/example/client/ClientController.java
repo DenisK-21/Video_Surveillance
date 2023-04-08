@@ -52,6 +52,8 @@ public class ClientController {
 
     @FXML
     protected void start_mask() throws InterruptedException {
+
+
         System.out.println("check Box working");
         if (this.cameraActive) {
             if (check_box.isSelected()) {
@@ -61,10 +63,10 @@ public class ClientController {
                 Scanner left_2 = new Scanner(int_cam_2_1.getText());
                 Scanner right_2 = new Scanner(int_cam_2_2.getText());
                 camera_1.setMask(new Mask(left_1.nextInt(), left_1.nextInt(), right_1.nextInt(), right_1.nextInt()));
-                camera_2.setMask(new Mask(left_2.nextInt(), left_2.nextInt(), right_2.nextInt(), right_2.nextInt()));
+                //camera_2.setMask(new Mask(left_2.nextInt(), left_2.nextInt(), right_2.nextInt(), right_2.nextInt()));
             } else {
                 camera_1.setMask(new Mask());
-                camera_2.setMask(new Mask());
+               // camera_2.setMask(new Mask());
             }
         }
     }
@@ -74,16 +76,16 @@ public class ClientController {
         if (!this.cameraActive) {
 
             this.cameraActive = true;
-
+            System.out.println(Server.getStatus());
 
             String RTSP_URL_1 = "rtsp://admin:@192.168.1.10:554/mode=real&idc=1&ids=2";
             String RTSP_URL_2 = "rtsp://192.168.1.12:554/stream1";
             String RTSP_URL_3 = "rtsp://192.168.1.78.554/mode=real";
             String RTSP_URL_4 = "rtsp://192.168.1.120:554/mode=real";
-            camera_1 = new VideoStream(RTSP_URL_1, currentFrame_cam_1, "camera1_");
+            camera_1 = new VideoStream(RTSP_URL_1, currentFrame_cam_1, "camera1_",1);
             camera_1.start();
-            camera_2 = new VideoStream(RTSP_URL_2, currentFrame_cam_2,"camera_2_");
-            camera_2.start();
+           // camera_2 = new VideoStream(RTSP_URL_2, currentFrame_cam_2,"camera_2_",2);
+           // camera_2.start();
             Thread.sleep(4000);
             Image image = new Image("C://not_signal.png");
             currentFrame_cam_3.imageProperty().set(image);
@@ -98,7 +100,7 @@ public class ClientController {
             this.cameraActive = false;
             // update again the button content
             camera_1.finish();
-            camera_2.finish();
+            //camera_2.finish();
             this.start_btn.setText("Start Camera");
 
         }
