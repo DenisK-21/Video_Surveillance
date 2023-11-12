@@ -6,32 +6,66 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import org.bytedeco.javacv.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.sql.SQLException;
+
 
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.opencv.opencv_core.*;
-import org.bytedeco.opencv.presets.opencv_core;
+import org.bytedeco.opencv.opencv_videoio.VideoWriter;
+
+
 import org.opencv.imgproc.Imgproc;
 
 
 import java.awt.image.BufferedImage;
+import java.sql.Statement;
 import java.time.LocalTime;
+
 import java.util.LinkedList;
+
+import static com.example.client.Clients.connection;
 
 import static org.bytedeco.opencv.global.opencv_core.TYPE_MARKER;
 import static org.bytedeco.opencv.global.opencv_core.absdiff;
 import static org.bytedeco.opencv.global.opencv_imgproc.*;
-import static org.bytedeco.opencv.global.opencv_ximgproc.dilate;
 
-public class VideoStream implements Runnable {
+
+public class VideoStream extends Thread {
+
+    private final int id_cam;
+    private boolean event;
+    private boolean mFinish;
+
+    private Mask mask;
+    private int range_1;
+    private final VideoWriter videoWriter;
+    private boolean check_video;
     private final String RTSP_IRL;
+
+    private int localtime;
+    private Mat previous_frame;
     ImageView imageView;
     private final String number_camera;
 
-    public VideoStream(String URL, ImageView imageView, String number_camera) {
+    public VideoStream(String URL, ImageView imageView, String number_camera, int id) {
 
+        this.id_cam = id;
+        this.localtime = 0;
         this.RTSP_IRL = URL;
         this.imageView = imageView;
         this.number_camera = number_camera;
+        this.previous_frame = null;
+        this.check_video = false;
+        this.videoWriter = new VideoWriter();
+        this.range_1 = 0;
+        this.mask = new Mask();
+        this.mFinish = true;
+        this.event = false;
 
     }
 
@@ -39,117 +73,168 @@ public class VideoStream implements Runnable {
     public void run() {
         try {
             int fps = 0;
-            int prnt_fps = 0;
             int fps_sec = 0;
-            int now_sec = 0;//Создаем переменные
 
 
             // запись и предзапись видио
-            int range_10 = 0; //предзапись на 10 секунд
-            LinkedList<Frame> queue = new LinkedList<>(); //очередб на предзапись или постзапись
-            boolean check_video = false; // проверка на движение
-            boolean end_video = false; // проверка на окончание записи
-            int number = 0;
-            //VideoWriter writer = new VideoWriter(name,875967048, 20.0, new Size(704,576), true);
+            LinkedList<Mat> queue = new LinkedList<>(); //очередб на предзапись или постзапись
 
 
             FFmpegFrameGrabber grabber = FFmpegFrameGrabber.createDefault(this.RTSP_IRL);
+            System.out.println(grabber.hasVideo());
             grabber.setOption("rtsp_transport", "tcp"); // Use tcp, otherwise the packet loss will be very serious
             System.out.println("grabber start");
             grabber.start();
-            FFmpegFrameRecorder recorder = FFmpegFrameRecorder.createDefault(this.number_camera + number + ".avi", 704, 576);
-            recorder.start();
+
+
+            Size size = new Size(grabber.getImageWidth(), grabber.getImageHeight());
+
+
             //1. Play video
-
-
+            System.out.println(grabber.hasVideo());
+            //Statement statement = connection.createStatement();
             OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
-            Mat previous_frame = null;
-            while (true) {
+            //что бы через раз обрабатывал MAt
+            int change = 0;
+            String events = "0";
+            int status;
+            // предназначен для того, что бы в будущем понимать было ли движение или нет
+            boolean check_movement;
+            while (this.mFinish) {
 
                 // prob
                 Frame frame = grabber.grabImage();
 
-                Mat image = converter.convertToMat(frame);
+                Mat image = new Mat(converter.convertToMat(frame));
+                check_movement = false;
 
-                Mat prepared_frame = new Mat();
+                // условие нужно для того, чтобы кадры обрабатывались через 10
+                if (change > 10) {
+                    check_movement = MotionDetector(image);
 
-                cvtColor(image, prepared_frame, Imgproc.COLOR_BGR2GRAY);
-                GaussianBlur(prepared_frame, prepared_frame, new Size(15, 15), 0);
-
-                if (previous_frame == null) {
-                    previous_frame = new Mat(prepared_frame);
+                    System.out.println(LocalTime.now().getSecond());
+                    change = 0;
                 }
-                Mat dif_frame = new Mat();
-                absdiff(previous_frame, prepared_frame, dif_frame);
-                previous_frame = prepared_frame;
-                threshold(dif_frame, dif_frame, 20, 255, THRESH_BINARY);
-                //Mat kernel = getStructuringElement(MORPH_RECT, new Size(1, 1));
-                // dilate(dif_frame,dif_frame, kernel);
-
-                MatVector contours = new MatVector();
-                findContours(dif_frame, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-
-                drawContours(image, contours, -1, Scalar.BLUE);
-                //prob end
-
-                if (contours.size() > 10) {
-                    check_video = true;
-                    range_10 = 0;
-                    end_video = true;
-
-                    putText(image, "Status: Movement", new Point(2000, 100),
+                change++;
+                if (check_movement)
+                    putText(image, "Movement", new Point(1500, 100),
                             FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
-                } else {
-                    check_video = false;
-                    if (range_10 > 4)
-                        queue.removeFirst();
-                    queue.add(frame);
+
+
+                status = Server.getStatus(this.id_cam);
+                if (status == 0) {
+                    this.event = false;
+                } else if (status / 10 == this.id_cam || status / 10 == 3) {
+                    this.event = true;
+                    // присваивать какие-то события events
+                    int ev = status % 10;
+
+                    switch (ev) {
+                        case 0 ->{this.event = false;
+                        events = "0";}
+                        case 1 -> events ="fire alarm";
+                        case 2 -> events ="open door";
+                        case 3 -> events ="alarm";
+                        case 4 -> events ="open ticket office";
+                        case 5 -> events ="changing of the guard";
+                        default -> events ="unidentified team, cancel";
+                    };
                 }
-                now_sec = LocalTime.now().getSecond();
+
+                check_movement = check_movement || this.event;
+
+                //запись
+
+                WriteImage(check_movement, image, queue, size, events);
+                int now_sec = LocalTime.now().getSecond();
 
                 //расчёт fps
                 if (fps_sec == now_sec) {
                     fps++;
                 } else {
-                    range_10++;
+                    this.range_1++;
                     fps_sec = now_sec;
-                    prnt_fps = fps;
+                    System.out.println("FPS = " + fps);
                     fps = 0;
                 }
 
-                //работа с записью видио
-                if (check_video) {
-                    if (queue.size() != 0) {
-                        for (Frame x : queue) {
-                            recorder.record(x);
-                        }
-                        queue.clear();
-                    }
-                    recorder.record(frame);
+                // конец записи
 
-                } else {
-                    if (end_video) {
-                        if (range_10 > 4) {
-                            recorder.stop();
-                            end_video = false;
-                            number++;
-                            recorder = FFmpegFrameRecorder.createDefault(this.number_camera + number + ".avi", grabber.getImageWidth(), grabber.getImageHeight());
-                            recorder.start();
-                        } else recorder.record(frame);
-                    }
-                }
+                //маска
+                if (this.mask.isStatus())
+                    rectangle(image, this.mask.getUpper_left_corner(),
+                            this.mask.getLower_right_corner(), Scalar.BLUE, 3, 4, 0);
 
-                putText(image, "FPS: " + prnt_fps, new Point(2140, 1400),
-                        FONT_HERSHEY_DUPLEX, 1.8, Scalar.WHITE, 2, TYPE_MARKER, false);
+
                 frame = converter.convert(image);
                 WritableImage image1 = SwingFXUtils.toFXImage(FrameToBufferedImage(frame), null);
                 Platform.runLater(() -> imageView.imageProperty().set(image1));
-                //onFXThread(imageView.imageProperty(),image);
                 //System.out.println(this.RTSP_IRL);
             }
-        } catch (FrameGrabber.Exception | FFmpegFrameRecorder.Exception e) {
+        } catch (FrameGrabber.Exception | SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+
+    public void WriteImage(boolean check_movement, Mat image, LinkedList<Mat> queue, Size size, String events) throws SQLException {
+        if (this.check_video) { // если происходит запись
+            if (check_movement) {
+                queue.clear();
+                this.range_1 = 0;
+            } else {
+                queue.add(image);
+            }
+            if (this.range_1 > 5) {
+                this.check_video = false;
+                this.videoWriter.release();
+                copyvideo(this.number_camera + this.localtime + ".mp4");
+                // statement.executeUpdate("insert into videos(id, daterecord, videopath, duration, original)" +
+                //        "values (" + "nextval('videos_id_seq')" + ",current_timestamp,'" + "database/videos/"
+                //       + this.number_camera + this.localtime + ".mp4'" + ",current_time,true)");
+                System.out.println("заканчивем видио");
+            }
+            if (this.event) {
+                // событие на экран
+                putText(image, events, new Point(800, 700),
+                        FONT_HERSHEY_DUPLEX, 1.8, Scalar.RED, 4, TYPE_MARKER, false);
+
+            }
+            this.videoWriter.write(image);
+            System.out.println("записывфем кадр");//записываем видио
+        } else {
+            if (check_movement) {
+                System.out.println("запись началась");
+                this.localtime = LocalTime.now().getSecond();
+                this.videoWriter.open(this.number_camera + localtime + ".mp4",
+                        VideoWriter.fourcc((byte) 'D', (byte) 'I', (byte) 'V', (byte) 'X'), 24.0, size, true);
+                this.check_video = true;
+                for (Mat mat : queue) {
+                    this.videoWriter.write(mat);
+                }
+
+                this.range_1 = 0;
+                queue.clear();
+            } else {
+                if (this.range_1 > 5) {
+                    queue.removeFirst();
+                }
+                queue.addLast(new Mat(image));
+            }
+        }
+    }
+
+    private void copyvideo(String name) {
+        Path from = Paths.get(name);
+        Path to = Paths.get("C:/denis_zahar/Recordeo-server/database/videos/" + name);
+
+        try {
+            Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("File copied successfully.");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
     }
 
     public static BufferedImage FrameToBufferedImage(Frame frame) {
@@ -159,4 +244,51 @@ public class VideoStream implements Runnable {
         return converter.getBufferedImage(frame);
     }
 
+    public Boolean MotionDetector(Mat image) {
+        Mat prepared_frame = new Mat();
+
+        cvtColor(image, prepared_frame, Imgproc.COLOR_BGR2GRAY);
+        GaussianBlur(prepared_frame, prepared_frame, new Size(15, 15), 0);
+
+        if (this.previous_frame == null) {
+            this.previous_frame = new Mat(prepared_frame);
+        }
+        Mat dif_frame = new Mat();
+        absdiff(this.previous_frame, prepared_frame, dif_frame);
+        this.previous_frame = prepared_frame;
+
+
+        threshold(dif_frame, dif_frame, 10, 255, THRESH_BINARY);
+
+        //маска
+        if (this.mask.isStatus())
+            rectangle(dif_frame, this.mask.getUpper_left_corner(),
+                    this.mask.getLower_right_corner(), Scalar.BLUE, FILLED, 4, 0);
+        MatVector contours = new MatVector();
+        findContours(dif_frame, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+        //DrawingContours(image, contours);
+        return contours.size() > 40;
+    }
+
+    private void DrawingContours(Mat image, MatVector contours) {
+
+        for (long i = 0; i < contours.size(); i++) {
+            Mat mat = contours.get(i);
+            if (100 < contourArea(mat)) {
+                Rect rect = boundingRect(mat);
+                rectangle(image, rect, Scalar.GREEN);
+            }
+        }
+    }
+
+    public void finish()        //Инициирует завершение потока
+    {
+        mFinish = false;
+    }
+
+    public void setMask(Mask mask) throws InterruptedException {
+        this.mask = mask;
+        Thread.sleep(1000);
+    }
 }
